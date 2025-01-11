@@ -1,0 +1,63 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main  # Exécute le workflow sur chaque push vers la branche 'main'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # Utilisation d'un environnement Ubuntu pour le build
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2  # Clone le dépôt
+
+    - name: Set up Docker
+      uses: docker/setup-buildx-action@v2  # Configure Docker
+
+    - name: Build Docker image
+      run: |
+        docker build -t my-nginx-image .
+
+    - name: Save Docker image as artifact
+      uses: actions/upload-artifact@v2  # Sauvegarde l'image construite comme artefact
+      with:
+        name: nginx-image
+        path: ./my-nginx-image.tar
+
+  test:
+    runs-on: ubuntu-latest  # Utilisation d'un environnement Ubuntu pour les tests
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2  # Clone le dépôt
+
+    - name: Install dependencies
+      run: |
+        npm install  # Si vous avez des tests JavaScript, ajustez pour PHP ou d'autres environnements
+
+    - name: Run tests
+      run: |
+        npm run test  # Exécutez vos tests ici (remplacez cette ligne si nécessaire)
+      
+  deploy:
+    runs-on: ubuntu-latest  # Utilisation d'un environnement Ubuntu pour le déploiement
+
+    needs: [build]  # Le job deploy dépend du job build
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2  # Clone le dépôt
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.3  # Permet l'utilisation de la clé SSH
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}  # Utilise la clé privée stockée dans GitHub Secrets
+
+    - name: Copy Docker image to server and run container
+      run: |
+        ssh ubuntu@your_server_ip << 'EOF'
+          docker pull my-nginx-image
+          docker run -d -p 80:80 my-nginx-image
+        EOF
