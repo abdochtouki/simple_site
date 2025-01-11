@@ -3,51 +3,26 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - main  # Déclenche sur les pushes dans la branche principale
+      - main
   pull_request:
     branches:
-      - main  # Déclenche sur les PR vers la branche principale
+      - main
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Debug directory structure
-      run: |
-        echo "Vérification des fichiers du projet"
-        ls -R
-
-    - name: Build Docker image
-      run: |
-        docker build -t simple_site .
-
-    - name: Save Docker image as artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: nginx-image
-        path: ./Dockerfile  # Assurez-vous que le chemin est correct pour Dockerfile
-
   deploy:
     runs-on: ubuntu-latest
-    needs: build
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-  
-    - name: Set up SSH
-      uses: webfactory/ssh-agent@v0.5.3
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-  
-    - name: Deploy to server
-      run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.HOST }} "
-        cd /path/to/project &&
-        git pull origin main &&
-        docker-compose up -d"
-      env:
-        USER: ${{ secrets.USER }}
-        HOST: ${{ secrets.HOST }}
+      # Vérifie le code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Configure SSH avec la clé privée
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      # Déploiement sur le serveur
+      - name: Deploy to server
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.HOST }} "cd /path/to/project && git pull origin main && docker-compose up -d"
