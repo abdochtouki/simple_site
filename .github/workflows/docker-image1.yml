@@ -23,4 +23,6 @@ jobs:
         key: ${{ secrets.UBUNTU_VM_PRIVATE_KEY }}    # Clé privée SSH
         port: 22                                    # Port SSH (par défaut 22)
         script: |
-          echo "SSH connection successful!"         # Script de test de la connexion SSH
+          set -x
+          ssh -vvv -i ${{ secrets.UBUNTU_VM_PRIVATE_KEY }} -p 22 ${{ secrets.UBUNTU_VM_USERNAME }}@${{ secrets.UBUNTU_VM_IP }}
+
