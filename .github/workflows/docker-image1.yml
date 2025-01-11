@@ -8,17 +8,19 @@ on:
 jobs:
   test-ssh:
     runs-on: ubuntu-latest
-
+    
     steps:
+    # Étape 1: Cloner le dépôt
     - name: Checkout repository
       uses: actions/checkout@v2
 
+    # Étape 2: Tester la connexion SSH avec une clé privée
     - name: Test SSH connection
-      uses: appleboy/ssh-action@v0.1.4
+      uses: appleboy/ssh-action@v0.1.5
       with:
-        host: ${{ secrets.UBUNTU_VM_IP }}          # IP de la VM
-        username: ${{ secrets.UBUNTU_VM_USERNAME }} # Nom d'utilisateur pour SSH
-        key: ${{ secrets.UBUNTU_VM_PRIVATE_KEY }}   # Clé privée pour SSH
-        port: 22                                    # Port SSH
+        host: ${{ secrets.UBUNTU_VM_IP }}           # IP de votre serveur Ubuntu
+        username: ${{ secrets.UBUNTU_VM_USERNAME }}  # Nom d'utilisateur SSH
+        key: ${{ secrets.UBUNTU_VM_PRIVATE_KEY }}    # Clé privée SSH
+        port: 22                                    # Port SSH (par défaut 22)
         script: |
-          echo "SSH connection successful!"        # Test de la connexion SSH
+          echo "SSH connection successful!"         # Script de test de la connexion SSH
