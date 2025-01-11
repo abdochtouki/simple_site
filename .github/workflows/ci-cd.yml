@@ -3,22 +3,37 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - main  # Déclenche le pipeline sur chaque push vers la branche principale
+      - main
   pull_request:
     branches:
-      - main  # Déclenche le pipeline sur chaque pull request vers la branche principale
+      - main
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # Utilisation d'un runner Ubuntu
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3  # Récupère le code source du dépôt
+      uses: actions/checkout@v3
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3  # Installe Node.js sur le runner
+    - name: Set up Docker
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build Docker image
+      run: |
+        docker build -t simple_site .
+
+    - name: Save Docker image as artifact
+      uses: actions/upload-artifact@v3
       with:
-        node-version: '16'  # Spécifie la version de Node.js à utiliser
+        name: nginx-image
+        path: ./simple_site.dockerfile
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
 
     - name: Check if package.json exists
       run: |
@@ -26,48 +41,31 @@ jobs:
           echo "package.json found!"
         else
           echo "package.json not found!"
-          exit 1  # Si package.json n'est pas trouvé, échoue le workflow
+          exit 1
         fi
 
     - name: Install dependencies
       run: |
-        cd simple_site  # Accède au répertoire contenant package.json
-        npm install  # Installe les dépendances définies dans package.json
-
-  test:
-    runs-on: ubuntu-latest  # Utilisation d'un runner Ubuntu
-    needs: build  # Cette étape ne commence qu'après la réussite du job "build"
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '16'
+        cd simple_site
+        npm install
 
     - name: Run tests
       run: |
-        cd simple_site  # Accède au répertoire de votre projet
-        npm test  # Exécute les tests définis dans votre package.json
+        cd simple_site
+        npm test
 
   deploy:
-    runs-on: ubuntu-latest  # Utilisation d'un runner Ubuntu
-    needs: test  # Cette étape ne commence qu'après la réussite du job "test"
+    runs-on: ubuntu-latest
+    needs: test
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up SSH key for deployment
-      run: |
-        echo "$SSH_PRIVATE_KEY" > private_key.pem  # Remplacez par votre clé privée SSH
-        chmod 600 private_key.pem  # Change les permissions de la clé privée
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.3
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    - name: Deploy to Ubuntu server
+    - name: Deploy to server
       run: |
-        ssh -i private_key.pem username@your_server_ip << EOF  # Remplacez username et your_server_ip
-          cd /path/to/your/project  # Accédez au répertoire de votre projet sur le serveur
-          git pull origin main  # Récupérez la dernière version du code depuis GitHub
-          npm install  # Installez les dépendances
-          pm2 restart your-app  # Si vous utilisez pm2 pour gérer votre application Node.js
-        EOF
+        ssh -o StrictHostKeyChecking=no user@your-server-ip "cd /path/to/project && git pull origin main && docker-compose up -d"
